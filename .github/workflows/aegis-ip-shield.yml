@@ -48,10 +48,10 @@ jobs:
           tree = git("rev-parse", f"{head}^{{tree}}").decode().strip()
           raw = git("ls-tree", "-r", "-z", head)
           all_entries = []
-          for item in raw.split(b"\\0"):
+          for item in raw.split(b"\0"):
               if not item:
                   continue
-              meta, raw_path = item.split(b"\\t", 1)
+              meta, raw_path = item.split(b"\t", 1)
               mode, kind, oid = meta.decode().split(" ", 2)
               if kind == "blob":
                   all_entries.append((raw_path.decode("utf-8", "surrogateescape"), mode, oid))
@@ -59,7 +59,7 @@ jobs:
           limit = 25000
           entries = all_entries[:limit]
           process = subprocess.Popen(["git", "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-          process.stdin.write(b"".join(oid.encode() + b"\\n" for _, _, oid in entries))
+          process.stdin.write(b"".join(oid.encode() + b"\n" for _, _, oid in entries))
           process.stdin.close()
           files = []
           for path, mode, oid in entries:
@@ -74,7 +74,7 @@ jobs:
                       raise RuntimeError("Truncated Git object")
                   digest.update(chunk)
                   remaining -= len(chunk)
-              if process.stdout.read(1) != b"\\n":
+              if process.stdout.read(1) != b"\n":
                   raise RuntimeError("Malformed Git object boundary")
               files.append({"path": path, "mode": mode, "git_blob_oid": oid, "sha256": digest.hexdigest()})
           if process.wait() != 0:
@@ -83,7 +83,7 @@ jobs:
           log = git("log", "-n500", "--format=%H%x09%an%x09%ae%x09%aI%x09%s", head).decode("utf-8", "replace")
           commits = []
           for line in log.splitlines():
-              parts = line.split("\\t", 4)
+              parts = line.split("\t", 4)
               if len(parts) == 5:
                   sha, name, email, authored, subject = parts
                   commits.append({"sha": sha, "author_name_declared": name,
@@ -116,10 +116,10 @@ jobs:
             ]
           }
           output = Path(os.environ["RUNNER_TEMP"]) / "ip-shield-report.json"
-          encoded = (json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\\n").encode()
+          encoded = (json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode()
           output.write_bytes(encoded)
           checksum = hashlib.sha256(encoded).hexdigest()
-          output.with_suffix(".json.sha256").write_text(f"{checksum}  {output.name}\\n")
+          output.with_suffix(".json.sha256").write_text(f"{checksum}  {output.name}\n")
           print(f"IP SHIELD recorded {len(files)} of {len(all_entries)} tracked-file fingerprints at {head}")
           PY
 
